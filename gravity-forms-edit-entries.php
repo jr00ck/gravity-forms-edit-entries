@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.2
+Version: 1.3
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -210,8 +210,9 @@ function gfee_after_submission( $tmp_entry, $form ) {
 	// initialize deletefiles variable
 	$deletefiles = array();
 
-	// handle file uploads
+	// take care of certain fields that need special handling
 	foreach ($form['fields'] as $field) {
+		// handle file uploads
 		if($field['type'] == 'fileupload'){
 			// haven't uploaded any new files, save any existing files to new entry before overwriting original entry (currently only supports one file per field)
 			if(!$tmp_entry[$field['id']]){
@@ -230,6 +231,9 @@ function gfee_after_submission( $tmp_entry, $form ) {
 				$delete_file_path = get_file_path_from_gf_entry($orig_entry[$field['id']]);
 				$deletefiles[] = $delete_file_path;
 			}
+		} elseif($field['adminOnly']){
+			// set adminOnly fields back to what they were before user updated non-admin fields
+			$tmp_entry[$field['id']] = $orig_entry[$field['id']];
 		}
 	}
 	// perform update entry with tmp_entry which overwrites the original entry
