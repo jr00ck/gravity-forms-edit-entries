@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.3
+Version: 1.4
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -39,6 +39,7 @@ function gf_edit_entries_shortcode( $params ) {
 	// 
 	if( is_numeric($_GET['entry_id']) || $entry_id ){
 		GFEE::set_entry_id( $entry_id ? $entry_id : $_GET['entry_id'] );
+		GFEE::get_entry_by_id(GFEE::$entry_id);
 	} elseif ( $_GET['value'] || $value ) {
 		GFEE::get_entry_by_value($form_id, $key, $value);
 	}
@@ -83,8 +84,15 @@ class GFEE {
 		self::set_entry($entry);
 	}
 
+	public static function get_entry_by_id($entry_id){
+
+		$entry = GFAPI::get_entry($entry_id);
+		self::set_entry($entry);
+
+	}
+
 	public static function set_entry($entry){
-		self::$entry = $entry[0];
+		self::$entry = $entry[0] ? $entry[0] : $entry;
 		self::set_entry_id(self::$entry['id']);
 	}
 	
