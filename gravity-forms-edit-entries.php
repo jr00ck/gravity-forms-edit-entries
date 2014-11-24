@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.4
+Version: 1.5
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -113,7 +113,7 @@ function gfee_pre_render( $form ) {
 	$exclude_fields = GFEE::$exclude_fields;
 
 	if(!$entry)
-		return;
+		return $form;
 
 	foreach ( $form['fields'] as &$field ) {
 		if(in_array($field['id'], $exclude_fields)){
@@ -161,6 +161,10 @@ function gfee_pre_render( $form ) {
 
 	?>
 	<script type="text/javascript">
+
+		<?php // output entry values into json object for use for other purposes
+		gfee_output_json($entry);
+		?>
 		
 		function DeleteFile(fieldId, deleteButton){
 		    if(confirm(<?php _e("'Would you like to delete this file? \'Cancel\' to stop. \'OK\' to delete'", "gravityforms"); ?>)){
@@ -176,6 +180,11 @@ function gfee_pre_render( $form ) {
 	</script>
 	<?php 
 	return $form;
+}
+
+function gfee_output_json($entry){
+
+	echo 'var gfee_entry = ' . json_encode($entry);
 }
 
 function gfee_field_content($content, $field, $value, $lead_id, $form_id){
