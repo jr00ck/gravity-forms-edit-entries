@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.6
+Version: 1.7
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -187,6 +187,7 @@ function gfee_output_json($entry){
 	echo 'var gfee_entry = ' . json_encode($entry);
 }
 
+// creates file upload field
 function gfee_field_content($content, $field, $value, $lead_id, $form_id){
 
 	if('fileupload' == $field['type']) {
@@ -219,49 +220,46 @@ function gfee_after_submission( $tmp_entry, $form ) {
 	GFEE::set_entry_id($_POST['gfee_entry_id']); // NEED TO BEEF UP SECURITY HERE AS THIS VALUE CAN BE MODIFIED BY USER TO EDIT SOMEONE ELSE'S ENTRY
 	$orig_entry_id = GFEE::$entry_id;
 	$orig_entry = GFAPI::get_entry($orig_entry_id);
-
-	// save ID of temp_entry to delete it later
-	$delete_entry_id = $tmp_entry['id'];
-	// set entry ID to overwrite the original entry
-	$tmp_entry['id'] = $orig_entry['id'];
+	
 	// initialize deletefiles variable
 	$deletefiles = array();
 
 	// take care of certain fields that need special handling
 	foreach ($form['fields'] as $field) {
-		// handle file uploads
-		if($field['type'] == 'fileupload'){
-			// haven't uploaded any new files, save any existing files to new entry before overwriting original entry (currently only supports one file per field)
-			if(!$tmp_entry[$field['id']]){
-				if($_POST['delete_file'] != $field['id']){
-					$tmp_entry[$field['id']] = $orig_entry[$field['id']];
+		// don't touch admin-only fields since front-end can't modify those
+		if(!$field['adminOnly']){
+			
+			// handle file uploads
+			if($field['type'] == 'fileupload'){
+				// if user has deleted this file upload, save to list to delete later
+				if($_POST['delete_file'] == $field['id']){
+					$delete_file_path = get_file_path_from_gf_entry($orig_entry[$field['id']]);
+					$deletefiles[] = $delete_file_path;
+					// save new file upload field data
+					$orig_entry[$field['id']] = $tmp_entry[$field['id']];
+				}
+				// this currently only supports one file per field
+				if($tmp_entry[$field['id']]){
+					// new file(s) uploaded, we need to copy the files because the originals will be deleted with the temp entry by Gravity Forms
+					$file_path = get_file_path_from_gf_entry($tmp_entry[$field['id']]);
+					$tmp_file_path = $file_path . '.tmp';
+					copy($file_path, $tmp_file_path);
+					// save new file upload field data
+					$orig_entry[$field['id']] = $tmp_entry[$field['id']];
 				}
 			} else {
-				// new file(s) uploaded, we need to copy the files because the originals will be deleted with the entry by Gravity Forms
-				$file_path = get_file_path_from_gf_entry($tmp_entry[$field['id']]);
-				$tmp_file_path = $file_path . '.tmp';
-				copy($file_path, $tmp_file_path);
+				// save updated field data to original entry
+				$orig_entry[$field['id']] = $tmp_entry[$field['id']];
 			}
-
-			// if user has deleted this file upload, save to list to delete later
-			if($_POST['delete_file'] == $field['id']){
-				$delete_file_path = get_file_path_from_gf_entry($orig_entry[$field['id']]);
-				$deletefiles[] = $delete_file_path;
-			}
-		} elseif($field['adminOnly']){
-			// set adminOnly fields back to what they were before user updated non-admin fields
-			$tmp_entry[$field['id']] = $orig_entry[$field['id']];
 		}
 	}
-	// save entry details before performing update so we don't lose that data
-	$tmp_entry = gfee_preserve_entry_details($orig_entry, $tmp_entry);
 
-	// perform update entry with tmp_entry which overwrites the original entry
-	$update_success = GFAPI::update_entry($tmp_entry);
+	// perform update entry with original entry data fields updated
+	$update_success = GFAPI::update_entry($orig_entry);
 
 	if($update_success === true){
 		// delete temporary entry
-		$delete_success = GFAPI::delete_entry($delete_entry_id);
+		$delete_success = GFAPI::delete_entry($tmp_entry['id']);
 
 		// delete any lingering files that shouldn't be around anymore
 		foreach ($deletefiles as $filename) {
