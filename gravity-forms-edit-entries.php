@@ -3,10 +3,11 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.7
+Version: 1.8
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
+GitHub Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 */
 
 // Add the entry_id to the form as a hidden field. This triggers an update to an existing entry
@@ -121,38 +122,40 @@ function gfee_pre_render( $form ) {
 			$field['cssClass'] = 'gform_hidden';
 			$field['isRequired'] = false;
 
-
 		} else {
-			$value = null; // needed?
-			if( $field['type'] == 'name' ) { // currently only handles "normal" name format (more options: http://www.eugenoprea.com/code-snippets/gravity-forms-populate-name-field/)
-				$value = array_filter( array( (strval($field['id'] . '.3') ) => $entry[$field['id'] . '.3'],( strval( $field['id'] . '.6') ) => $entry[$field['id'] . '.6'],) );
-			} elseif ( $field['type'] == 'address' ) { // may only handle U.S. addresses for now
-				$value = array_filter( array( 
-					(strval($field['id'] . '.1') ) => $entry[$field['id'] . '.1'],
-					(strval( $field['id'] . '.2') ) => $entry[$field['id'] . '.2'],
-					(strval( $field['id'] . '.3') ) => $entry[$field['id'] . '.3'],
-					(strval( $field['id'] . '.4') ) => $entry[$field['id'] . '.4'],
-					(strval( $field['id'] . '.5') ) => $entry[$field['id'] . '.5'],
-					(strval( $field['id'] . '.6') ) => $entry[$field['id'] . '.6']
-					) );
-			} elseif ( $field['type'] == 'checkbox' ) {
+
+			$value = null;
+
+			if( $field['type'] == 'name' || $field['type'] == 'address' ) { // handle name and address fields
+
+				// loop each field input and set the default value from the entry
+				foreach ($field->inputs as $key => &$input) {
+					$input['defaultValue'] = $entry[strval($input['id'])];
+				}
+
+			} elseif ( $field['type'] == 'checkbox' ) { // handle checkbox fields
+				
 				// only pull the field values from the entry that match the form field we are evaluating
 				$field_values = array();
+				
 				foreach ($entry as $key => $value) {
+
 					$entry_key = explode('.', $key);
+
 					if($entry_key[0] == $field['id']){
 						$field_values[] = $value;
 					}
 				}
 
-				foreach ( $field['choices'] as &$choice ) {
+				foreach ( $field->choices as &$choice ) {
 					$choice['isSelected'] = ( in_array($choice['value'], $field_values, true) ) ? true : '';
 				}
 
-			} else {
+			} else { // handle normal text and remaining fields
 				$value = $entry[$field['id']];
 			}
 			
+			// if we have a value for the field from the provided entry, set the default value for the field
 			if(!empty($value)) {
 				$field['defaultValue'] = $value;
 			}
@@ -179,6 +182,7 @@ function gfee_pre_render( $form ) {
 
 	</script>
 	<?php 
+
 	return $form;
 }
 
@@ -247,6 +251,13 @@ function gfee_after_submission( $tmp_entry, $form ) {
 					// save new file upload field data
 					$orig_entry[$field['id']] = $tmp_entry[$field['id']];
 				}
+			// handle checkboxes
+			} elseif($field['type'] == 'checkbox') {
+
+				foreach ($field->inputs as $key => $input) {
+					$orig_entry[$input['id']] = $tmp_entry[$input['id']];
+				}				
+
 			} else {
 				// save updated field data to original entry
 				$orig_entry[$field['id']] = $tmp_entry[$field['id']];
