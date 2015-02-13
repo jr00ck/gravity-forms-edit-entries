@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.8
+Version: 1.8.1
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -235,15 +235,19 @@ function gfee_after_submission( $tmp_entry, $form ) {
 			
 			// handle file uploads
 			if($field['type'] == 'fileupload'){
+
 				// if user has deleted this file upload, save to list to delete later
 				if($_POST['delete_file'] == $field['id']){
+
 					$delete_file_path = get_file_path_from_gf_entry($orig_entry[$field['id']]);
 					$deletefiles[] = $delete_file_path;
 					// save new file upload field data
 					$orig_entry[$field['id']] = $tmp_entry[$field['id']];
 				}
+
 				// this currently only supports one file per field
 				if($tmp_entry[$field['id']]){
+
 					// new file(s) uploaded, we need to copy the files because the originals will be deleted with the temp entry by Gravity Forms
 					$file_path = get_file_path_from_gf_entry($tmp_entry[$field['id']]);
 					$tmp_file_path = $file_path . '.tmp';
@@ -251,11 +255,13 @@ function gfee_after_submission( $tmp_entry, $form ) {
 					// save new file upload field data
 					$orig_entry[$field['id']] = $tmp_entry[$field['id']];
 				}
-			// handle checkboxes
-			} elseif($field['type'] == 'checkbox') {
+
+			// handle checkboxes, address, and name fields
+			} elseif( $field['type'] == 'checkbox' || $field['type'] == 'address' || $field['type'] == 'name' ) {
 
 				foreach ($field->inputs as $key => $input) {
-					$orig_entry[$input['id']] = $tmp_entry[$input['id']];
+					// loop each field input and save it
+					$orig_entry[strval($input['id'])] = $tmp_entry[strval($input['id'])];
 				}				
 
 			} else {
@@ -269,6 +275,7 @@ function gfee_after_submission( $tmp_entry, $form ) {
 	$update_success = GFAPI::update_entry($orig_entry);
 
 	if($update_success === true){
+
 		// delete temporary entry
 		$delete_success = GFAPI::delete_entry($tmp_entry['id']);
 
@@ -308,6 +315,7 @@ function gfee_form_tag( $form_tag, $form ) {
 	$form_tag .= '<input type="hidden" name="gfee_entry_id" value="' . GFEE::$entry_id . '" class="gform_hidden" />';
 	return $form_tag;
 }
+
 // given a file path formatted from a gravity forms entry, returns a file path suitable to use in PHP
 function get_file_path_from_gf_entry($gf_file_path){
 	$file_url = stripslashes($gf_file_path);
