@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.8.1
+Version: 1.9
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -126,15 +126,8 @@ function gfee_pre_render( $form ) {
 
 			$value = null;
 
-			if( $field['type'] == 'name' || $field['type'] == 'address' ) { // handle name and address fields
+			if( $field['type'] == 'checkbox' ) { // handle checkbox fields
 
-				// loop each field input and set the default value from the entry
-				foreach ($field->inputs as $key => &$input) {
-					$input['defaultValue'] = $entry[strval($input['id'])];
-				}
-
-			} elseif ( $field['type'] == 'checkbox' ) { // handle checkbox fields
-				
 				// only pull the field values from the entry that match the form field we are evaluating
 				$field_values = array();
 				
@@ -151,7 +144,28 @@ function gfee_pre_render( $form ) {
 					$choice['isSelected'] = ( in_array($choice['value'], $field_values, true) ) ? true : '';
 				}
 
-			} else { // handle normal text and remaining fields
+			} elseif ( is_array( $field->inputs ) ) { // handle other multi-input fields (address, name, time, etc.)
+				
+				// for time field, parse entry string to get individual parts of time string
+				if( $field['type'] == 'time' ) {
+
+					// separate time string from entry into individual parts
+					list($HH, $time_end_part) = explode(':', $entry[strval($field['id'])]);
+					list($MM, $AMPM) = explode(' ', $time_end_part);
+
+					// save the time parts into individual array elements within the entry for our loop
+					$entry[$field['id'] . '.1'] = $HH;
+					$entry[$field['id'] . '.2'] = $MM;
+					$entry[$field['id'] . '.3'] = $AMPM;
+				}
+
+				// loop each field input and set the default value from the entry
+				foreach ($field->inputs as $key => &$input) {
+
+					$input['defaultValue'] = $entry[strval($input['id'])];
+				}
+
+			} else { // handle remaining single input fields
 				$value = $entry[$field['id']];
 			}
 			
