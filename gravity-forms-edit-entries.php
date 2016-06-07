@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Edit Entries
 Plugin URI: https://github.com/jr00ck/gravity-forms-edit-entries
 Description: Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.
-Version: 1.9
+Version: 1.9.1
 Author: FreeUp
 Author URI: http://freeupwebstudio.com
 Author Email: jeremy@freeupwebstudio.com
@@ -220,7 +220,7 @@ function gfee_field_content($content, $field, $value, $lead_id, $form_id){
 	        foreach($file_urls as $file_index => $file_url){
 	        	// remove url protocol?
 	            $file_url = esc_attr($file_url);
-	            $preview .= sprintf("<div id='preview_file_%d'><input type='hidden' name='delete_file' /><a href='%s' target='_blank' alt='%s' title='%s'>%s</a><a href='%s' target='_blank' alt='" . __("Download file", "gravityforms") . "' title='" . __("Download file", "gravityforms") . "'><img src='%s' style='margin-left:10px;'/></a><a href='javascript:void(0);' alt='" . __("Delete file", "gravityforms") . "' title='" . __("Delete file", "gravityforms") . "' onclick='DeleteFile(%d, this);' ><img src='%s' style='margin-left:10px;'/></a></div>", $file_index, $file_url, $file_url, $file_url, GFCommon::truncate_url($file_url), $file_url, GFCommon::get_base_url() . "/images/download.png", $id, GFCommon::get_base_url() . "/images/delete.png");
+	            $preview .= sprintf("<div id='preview_file_%d'><input type='hidden' name='delete_file_%d' /><a href='%s' target='_blank' alt='%s' title='%s'>%s</a><a href='%s' target='_blank' alt='" . __("Download file", "gravityforms") . "' title='" . __("Download file", "gravityforms") . "'><img src='%s' style='margin-left:10px;'/></a><a href='javascript:void(0);' alt='" . __("Delete file", "gravityforms") . "' title='" . __("Delete file", "gravityforms") . "' onclick='DeleteFile(%d, this);' ><img src='%s' style='margin-left:10px;'/></a></div>", $file_index, $id, $file_url, $file_url, $file_url, GFCommon::truncate_url($file_url), $file_url, GFCommon::get_base_url() . "/images/download.png", $id, GFCommon::get_base_url() . "/images/delete.png");
 	        }
 
 	        $preview .="</div>";
@@ -251,7 +251,7 @@ function gfee_after_submission( $tmp_entry, $form ) {
 			if($field['type'] == 'fileupload'){
 
 				// if user has deleted this file upload, save to list to delete later
-				if($_POST['delete_file'] == $field['id']){
+				if($_POST['delete_file_' . $field['id']] == $field['id']){
 
 					$delete_file_path = get_file_path_from_gf_entry($orig_entry[$field['id']]);
 					$deletefiles[] = $delete_file_path;
@@ -266,6 +266,8 @@ function gfee_after_submission( $tmp_entry, $form ) {
 					$file_path = get_file_path_from_gf_entry($tmp_entry[$field['id']]);
 					$tmp_file_path = $file_path . '.tmp';
 					copy($file_path, $tmp_file_path);
+					$temp_files[] = $tmp_file_path;
+
 					// save new file upload field data
 					$orig_entry[$field['id']] = $tmp_entry[$field['id']];
 				}
@@ -299,10 +301,17 @@ function gfee_after_submission( $tmp_entry, $form ) {
 				unlink($filename);
 			}	
 		}
-		
+
 		// original file(s) should be deleted by Gravity Forms or us, need to rename temp file back to original name
-		if($tmp_file_path){
-			rename($tmp_file_path, $file_path);
+		if(!empty($temp_files)){
+
+			foreach ($temp_files as $temp_file_path) {
+				// remove ".tmp" extension, if present
+				$reverted_file_path = preg_replace('/\.tmp$/', '', $temp_file_path);
+
+				// rename file
+				rename($temp_file_path, $reverted_file_path);
+			}
 		}
 	}
 }
