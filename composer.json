@@ -1,0 +1,15 @@
+{
+  "name": "jr00ck/gravity-forms-edit-entries",
+  "description": "Allows editing Gravity Forms entries on your site using shortcodes. Uses [gf-edit-entries] shortcode. Also provides a link to edit an entry using [gf-edit-entries-link] shortcode.",
+  "keywords": ["wordpress", "plugin", "jr00ck", "gravity-forms"],
+  "homepage": "https://github.com/jr00ck/gravity-forms-edit-entries.git",
+  "license": "GNU",
+  "authors": [{
+    "name": "Jeremy Saxey",
+    "homepage": "http://freeupwebstudio.com"
+  }],
+  "type": "wordpress-plugin",
+  "require": {
+    "composer/installers": "^1.0.6"
+  }
+}
